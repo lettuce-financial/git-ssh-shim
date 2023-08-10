@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Shim program to negotiate an SSH key using ssh-agent.
+#
+# Based, in part, on discussion in  https://github.com/webfactory/ssh-agent/issues/30
+
+
+# First parse the repository name.
+#
+# The ssh client will pass a string of the form "git-upload-pack 'organization/repository.git'".
+
+for last in ${!#}; do :; done       # extract the final CLI argument
+noquotes=$(echo $last | tr -d "'")  # strip quotes
+base=${noquotes/.git/}              # remove .git
+repo=${base/*\//}                   # remove organization name
+
+# Now create a temporary directory for working with keys.
+key_dir=$(mktemp -d)
+trap "rm -rf $key_dir" EXIT
+
+# Now try each key.
+#
+# We can't run the full ssh command because we'll end up with an ssh protocol error if it fails
+# and the git client will exit before we have a chance to try other keys.
+#
+# We can, however, use `ssh git@github.com` to test connectivity; GitHub will include the matching
+# identity (for a deploy key) in each.
+#
+# TODO: we need a different matching strategy for user keys
+IFS=$'\n'
+for key in $(ssh-add -L); do
+    echo $key > $key_dir/current
+    result=$(ssh -T -i $key_dir/current git@github.com 2>&1)
+
+    if [[ "$result" == *"$repo"* ]]; then
+	mv $key_dir/current $key_dir/key
+    fi
+done
+
+if [ ! -e $key_dir/key ]; then
+    # no matching key
+    exit 1
+fi
+
+# Set ssh options.
+#
+# When using deploy keys, cloning will often fail unless host keys are valid.
+GIT_SSH_OPTIONS=${GIT_SSH_OPTIONS:--o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no}
+
+# Use the key.
+ssh -i $key_dir/key ${GIT_SSH_OPTIONS} $@
