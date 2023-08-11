@@ -22,10 +22,20 @@ provides such a program.
 
  1. Download the `git-ssh-shim` shell script.
 
- 2. Configure your environment to use this script for git ssh operations:
+    This guide will assume installation to the working directory.
+
+ 2. Configure your environment to use this script for git ssh operations.
+
+    If you are using deploy keys, simply set `GIT_SSH_COMMAND` to the shim:
 
     ```sh
-    export GIT_SSH_COMMAND=/path/to/git-ssh-shim
+    export GIT_SSH_COMMAND="$(pwd)/git-ssh-shim"
+    ```
+
+    If you are using user keys, include your GitHub username in the command:
+
+    ```sh
+    export GIT_SSH_COMMAND="$(pwd)/git-ssh-shim --user <github-username>"
     ```
 
  3. Use `ssh-agent` (e.g. via `ssh-add`) to add keys you want to use.
