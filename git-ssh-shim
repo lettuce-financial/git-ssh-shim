@@ -57,7 +57,7 @@ trap "rm -rf $key_dir" EXIT
 IFS=$'\n'
 for key in $(ssh-add -L); do
     echo $key > $key_dir/current
-    result=$(ssh -T -i $key_dir/current ${SSH_OPTIONS} git@github.com 2>&1)
+    result=$(ssh -T -i $key_dir/current "${SSH_OPTIONS}" git@github.com 2>&1)
 
     if [[ "$result" == *"$needle"* ]]; then
 	mv $key_dir/current $key_dir/key
