@@ -8,7 +8,13 @@ if [ -n "${XTRACE}" ]; then
     set -x
 fi
 
-# There are two ways we might want to match the ssh key.
+# Set ssh options.
+#
+# When using deploy keys, cloning will often fail unless host keys are valid.
+SSH_OPTIONS=${SSH_OPTIONS:"-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"}
+
+
+# Determine how to choose the ssh key.
 #
 # If we have a user key, we need the GIT_SSH_COMMAND to tell us which user to expect,
 # by adding the <github-username> to the command; the git client will pass these values
@@ -51,7 +57,7 @@ trap "rm -rf $key_dir" EXIT
 IFS=$'\n'
 for key in $(ssh-add -L); do
     echo $key > $key_dir/current
-    result=$(ssh -T -i $key_dir/current git@github.com 2>&1)
+    result=$(ssh -T -i $key_dir/current ${SSH_OPTIONS} git@github.com 2>&1)
 
     if [[ "$result" == *"$needle"* ]]; then
 	mv $key_dir/current $key_dir/key
@@ -67,11 +73,5 @@ if [ ! -e $key_dir/key ]; then
 fi
 
 
-# Set ssh options.
-#
-# When using deploy keys, cloning will often fail unless host keys are valid.
-GIT_SSH_OPTIONS=${GIT_SSH_OPTIONS:"--o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"}
-
-
 # Use the key; we cannot use `exec` here without breaking the use of `trap`.
-ssh -i $key_dir/key ${GIT_SSH_OPTIONS} $@
+ssh -i $key_dir/key ${SSH_OPTIONS} $@
