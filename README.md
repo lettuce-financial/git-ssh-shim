@@ -35,7 +35,7 @@ provides such a program.
     If you are using user keys, include your GitHub username in the command:
 
     ```sh
-    export GIT_SSH_COMMAND="$(pwd)/git-ssh-shim --user <github-username>"
+    export GIT_SSH_COMMAND="$(pwd)/git-ssh-shim <github-username>"
     ```
 
  3. Use `ssh-agent` (e.g. via `ssh-add`) to add keys you want to use.
