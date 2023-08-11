@@ -4,48 +4,81 @@
 #
 # Based, in part, on discussion in  https://github.com/webfactory/ssh-agent/issues/30
 
+if [ -n "${XTRACE}" ]; then
+    set -x
+fi
 
-# First parse the repository name.
+# There are two ways we might want to match the ssh key.
 #
-# The ssh client will pass a string of the form "git-upload-pack 'organization/repository.git'".
+# If we have a user key, we need the GIT_SSH_COMMAND to tell us which user to expect,
+# by adding `--user <github-username>` to the command; the git client will pass these
+# values as the first two CLI arguments.
+#
+# Otherwise, if we have a deploy key, we need to match the key to the repository name.
 
-for last in ${!#}; do :; done       # extract the final CLI argument
-noquotes=$(echo $last | tr -d "'")  # strip quotes
-base=${noquotes/.git/}              # remove .git
-repo=${base/*\//}                   # remove organization name
+if [ "$1" != "git@github.com" ]; then
+    # We have extra arguments.
+    if [ "$1" == "--user" ] && [ -n "$2" ]; then
+	# We have --user <github-username>
 
-# Now create a temporary directory for working with keys.
+	needle=$2
+	shift 2
+    else
+	# Unsupported argument
+	exit 1
+    fi
+else
+    # We have the repository name.
+    #
+    # The git client will this name in the last argument, as part of  a string of the form:
+    #
+    #     git-upload-pack 'organization/repository.git'
+
+    for last in ${!#}; do :; done       # extract the final CLI argument
+    noquotes=$(echo $last | tr -d "'")  # strip quotes
+    needle=${noquotes/.git/}            # remove .git
+fi
+
+# Create a temporary directory for working with keys.
+
 key_dir=$(mktemp -d)
 trap "rm -rf $key_dir" EXIT
 
-# Now try each key.
+
+# Try each key.
 #
 # We can't run the full ssh command because we'll end up with an ssh protocol error if it fails
 # and the git client will exit before we have a chance to try other keys.
 #
 # We can, however, use `ssh git@github.com` to test connectivity; GitHub will include the matching
-# identity (for a deploy key) in each.
+# identity (for a deploy key) in each; this is documented behavior.
 #
-# TODO: we need a different matching strategy for user keys
+# See: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/testing-your-ssh-connection
+
 IFS=$'\n'
 for key in $(ssh-add -L); do
     echo $key > $key_dir/current
     result=$(ssh -T -i $key_dir/current git@github.com 2>&1)
 
-    if [[ "$result" == *"$repo"* ]]; then
+    if [[ "$result" == *"$needle"* ]]; then
 	mv $key_dir/current $key_dir/key
     fi
 done
+
+
+# Make sure we found a matching key.
 
 if [ ! -e $key_dir/key ]; then
     # no matching key
     exit 1
 fi
 
+
 # Set ssh options.
 #
 # When using deploy keys, cloning will often fail unless host keys are valid.
-GIT_SSH_OPTIONS=${GIT_SSH_OPTIONS:--o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no}
+GIT_SSH_OPTIONS=${GIT_SSH_OPTIONS:"--o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"}
 
-# Use the key.
+
+# Use the key; we cannot use `exec` here without breaking the use of `trap`.
 ssh -i $key_dir/key ${GIT_SSH_OPTIONS} $@
