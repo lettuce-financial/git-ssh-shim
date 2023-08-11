@@ -25,11 +25,11 @@ else
     #
     # The git client will this name in the last argument, as part of  a string of the form:
     #
-    #     git-upload-pack 'organization/repository.git'
+    #     git-upload-pack '/organization/repository.git'
 
     for last in ${!#}; do :; done       # extract the final CLI argument
     noquotes=$(echo $last | tr -d "'")  # strip quotes
-    needle=${noquotes/.git/}            # remove .git
+    needle=${${noquotes/.git/}#/}       # remove leading slash and trailing .git
 fi
 
 # Create a temporary directory for working with keys.
