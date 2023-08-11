@@ -11,22 +11,15 @@ fi
 # There are two ways we might want to match the ssh key.
 #
 # If we have a user key, we need the GIT_SSH_COMMAND to tell us which user to expect,
-# by adding `--user <github-username>` to the command; the git client will pass these
-# values as the first two CLI arguments.
+# by adding the <github-username> to the command; the git client will pass these values
+# as the first CLI argument.
 #
 # Otherwise, if we have a deploy key, we need to match the key to the repository name.
 
 if [ "$1" != "git@github.com" ]; then
-    # We have extra arguments.
-    if [ "$1" == "--user" ] && [ -n "$2" ]; then
-	# We have --user <github-username>
-
-	needle=$2
-	shift 2
-    else
-	# Unsupported argument
-	exit 1
-    fi
+    # We have extra arguments; assume we have the github username.
+    needle=$1
+    shift
 else
     # We have the repository name.
     #
