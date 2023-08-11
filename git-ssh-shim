@@ -11,7 +11,7 @@ fi
 # Set ssh options.
 #
 # When using deploy keys, cloning will often fail unless host keys are valid.
-SSH_OPTIONS=${SSH_OPTIONS:"-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"}
+SSH_OPTIONS=${SSH_OPTIONS:-"-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"}
 
 
 # Determine how to choose the ssh key.
