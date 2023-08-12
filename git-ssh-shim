@@ -29,7 +29,8 @@ else
 
     for last in ${!#}; do :; done       # extract the final CLI argument
     noquotes=$(echo $last | tr -d "'")  # strip quotes
-    needle=${${noquotes/.git/}#/}       # remove leading slash and trailing .git
+    nogit=${noquotes/.git/}             # strip trailing .git
+    needle=${nogit#/}                   # strip leading slash
 fi
 
 # Create a temporary directory for working with keys.
